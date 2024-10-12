@@ -16,7 +16,7 @@ export async function getPlaceAutocomplete(
         params: {
           key,
           limit: 100,
-          countrySet: 'AU',
+          countrySet: process.env.COUNTRY_SET || 'AU',
         },
       }
     );
