@@ -1,17 +1,26 @@
-import axios from 'axios';
+import axios, { AxiosError } from 'axios';
 import { Address, LocationResult } from './types';
+
+
+const API_BASE_URL = 'https://api.tomtom.com/search/2';
+const SEARCH_ENDPOINT = 'search';
 
 // https://developer.tomtom.com/search-api/documentation/search-service/fuzzy-search
 export async function getPlaceAutocomplete(
   key: string,
   address: string
 ): Promise<Address[]> {
+
+  if (!address || address.trim().length === 0) {
+    throw Error('Address is required');
+  }
+
+  const encodedAddress = encodeURIComponent(address);
+
   try {
-    if (!address.trim()) {
-      throw Error('Address is required');
-    }
+
     const response = await axios.get(
-      `https://api.tomtom.com/search/2/search/${address}.json`,
+      `${API_BASE_URL}/${SEARCH_ENDPOINT}/${encodedAddress}.json`,
       {
         params: {
           key,
@@ -23,18 +32,22 @@ export async function getPlaceAutocomplete(
 
     const results: Array<LocationResult> = response.data.results;
 
-    return results.map((result: LocationResult): Address => {
+    return results.map(({ id, address }: LocationResult): Address => {
       return {
-        placeId: result.id,
-        streetName: result.address.streetName,
-        streetNumber: result.address.streetNumber,
-        countryCode: result.address.countryCode,
-        country: result.address.country,
-        freeformAddress: result.address.freeformAddress,
-        municipality: result.address.municipality,
+        placeId: id,
+        streetName: address.streetName,
+        streetNumber: address.streetNumber,
+        countryCode: address.countryCode,
+        country: address.country,
+        freeformAddress: address.freeformAddress,
+        municipality: address.municipality,
       };
     });
-  } catch (error: any) {
-    throw new Error(`Failed to fetch autocomplete results: ${error?.message}`);
+  } catch (error) {
+    if (axios.isAxiosError(error)) {
+      const axiosError = error as AxiosError;
+      throw new Error(`Failed to fetch autocomplete results: ${axiosError.message}`);
+    }
+    throw new Error('An unexpected error occurred while fetching autocomplete results');
   }
 }
